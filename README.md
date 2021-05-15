@@ -11,3 +11,5 @@ The aim of this project is to realise a Shared wallet with the following functio
 3. **Change Allowance**
     - *Owner*
        - This functionality is only given to the owner of the smart contract who is able to change the allowance that everyone interfacing the smart contract is allowed to have
+
+![Diagram](https://raw.githubusercontent.com/CarloFichera97/Shared_Wallet/main/Diagram.PNG)
