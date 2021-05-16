@@ -1,4 +1,4 @@
-pragma solidity >0.5.13;
+pragma solidity ^0.8.4;
 
 //Shared Wallet
 //Deposit
@@ -6,7 +6,8 @@ pragma solidity >0.5.13;
 contract Shared_Wallet {
     
     address owner;
-    int allowance = 100;
+    uint allowance = 100;
+    uint allowance_frequency = 180;
     mapping(address => uint) public balanceReceived;
     mapping(address => uint) TimeCount;
     mapping(address => uint) countAmountWithdrawn;
@@ -14,7 +15,7 @@ contract Shared_Wallet {
     constructor () {
         owner = msg.sender;
     }
-
+     //Function to get address of the Smart Contract Owner
     function getOwner() public view returns(address) {
         return owner;
     }
@@ -29,39 +30,51 @@ contract Shared_Wallet {
          return uint(allowance);
      }
 
+     //Function to get the frequency at which a user can withdraw its allowance 
+     function getFreqAllowance() public view returns(uint) {
+         return uint(allowance_frequency);
+     }
+     //Function to get how much money a user has withdrawn in the allowed time period
     function getAmountWithdrawn() public view returns(uint) {
          return uint(countAmountWithdrawn[msg.sender]);
      }
-
-     function TestTime() public view returns(uint) {
-         uint Time = TimeCount[msg.sender] - block.timestamp;
-         if (Time >180) {
-             return(0);
+     // Function to get:
+        // - How long the user has to wait if the totality of the withdrawable allowance in the allowed time period has been already withdrawn
+        // - How much time left the user has to withdraw its remaining allowance in the allocated time period
+     function getTime() public view returns(uint) {
+         if (TimeCount[msg.sender] == 0) {
+            return uint(0);
+         } else {
+             return(TimeCount[msg.sender] - block.timestamp);
          }
-         else {
-            return uint(Time);
-         }
-    }
-     
-     function setAllowance(int _allowance) public payable {
+     }
+     //Function to set the maximum allowance that a normal user is allowed to withdraw - Owner Only
+     function setAllowance(uint _allowance) public payable {
          require(msg.sender == owner, "You are not the owner and cannot change the allowance value");
          require(_allowance >= 0, "The allowance set must be positive");
          allowance = _allowance;
      }
-     
+     //Function to set how often the allowance can be withdrawn - Owner Only
+     function setfrequencyWithdrawal(uint _allowance_frequency) public {
+        require(msg.sender == owner, "You are not the owner and cannot change the allowance value");
+        require(_allowance_frequency >= 0, "The allowance set must be positive");
+        allowance_frequency = _allowance_frequency;
+    }
+
      //Function to send money to the smart contract
      function sendMoney() public payable {
          balanceReceived [msg.sender] += msg.value;
      }
      
+     //Function to withdraw the totality of the money locked in the smart contract - Owner Only
      function withdrawTotalMoney(address payable _to) public {
          require(msg.sender == owner, "You are not the owner and cannot withdraw all the funds contained in the smart contract");
          _to.transfer(getBalance());
      }
      
-     //This function allow the user to withdraw a certain amount of money during a certain amount of Time
-     //The maximum amount of money withdrawable depends on the allowance which is set by the contract owner
-     //The user can withdraw more than one time during the set period as long as the sum of al the withdrawals are <= allowance 
+     //Function to withdraw a smaller amount of money than the maximum available
+     // - Owner - Can withdraw as much as desired
+     // - User - Can withdraw an amount <= than the allowance
      function withdrawPartialMoney(address payable _to, uint _amount) public payable {
          require(_amount <= getAllowance(), "You cannot withdraw more than your allowance");
          require(_amount <= getBalance(), "There are not enough funds Locked in the Smart Contract");
@@ -73,13 +86,15 @@ contract Shared_Wallet {
                  TimeCount[msg.sender] = 0;
                  }
              if (countAmountWithdrawn[msg.sender] == 0) {
-                 TimeCount[msg.sender] = block.timestamp + 180;
+                 TimeCount[msg.sender] = block.timestamp + allowance_frequency;
                  }
              countAmountWithdrawn[msg.sender] = countAmountWithdrawn[msg.sender] + _amount;
              require(countAmountWithdrawn[msg.sender] <= getAllowance(), "You are not allowed to withdraw more than your allowance");
              _to.transfer(_amount);
              }
      }
+
+     //Function to destroy the smart contract - Owner Only
     function destroySmartContract(address payable _to) public {
         require(msg.sender == owner, "You are not the owner");
         selfdestruct(_to);
